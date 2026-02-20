@@ -63,6 +63,7 @@ def plot_data():
 
     return train, test
 
+
 def linear_trend_model(train):
     # Expect train to contain columns: 'x' (time variable) and 'total' (Y)
     y_all = train["total"].to_numpy(dtype=float)
@@ -70,7 +71,7 @@ def linear_trend_model(train):
     N = len(y_all)
 
     # Time index t = 1,...,N (not strictly needed for X here, but matches the assignment statement)
-    t = np.arange(1, N + 1)
+    # t = np.arange(1, N + 1)
 
     # Design matrix for ALL points: X = [1, x]
     X_all = np.column_stack([np.ones(N), x_all])
@@ -122,7 +123,7 @@ def linear_trend_model(train):
     print(s3)
 
     # Save as a picture for your report
-    fig = plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(10, 6))
     plt.axis("off")
     full_text = s1 + "\n" + s2 + "\n" + s3
     plt.text(0.01, 0.99, full_text, va="top", family="monospace")
@@ -198,7 +199,7 @@ def ols_global_linear_trend_model(train, test):
     # Use a normal approx for simplicity (≈ 95% => 1.96). If you want exact t, swap z->tcrit.
     z = 1.96
     # Efficient diagonal of X0 (XtX_inv) X0^T:
-    pred_var_mean = np.sum((X0 @ XtX_inv) * X0, axis=1) * sigma2_hat
+    # pred_var_mean = np.sum((X0 @ XtX_inv) * X0, axis=1) * sigma2_hat
     pred_var_obs = sigma2_hat * (1.0 + np.sum((X0 @ XtX_inv) * X0, axis=1))
     pred_se_obs = np.sqrt(pred_var_obs)
 
@@ -276,7 +277,7 @@ def ols_global_linear_trend_model(train, test):
     # If your numpy has erfinv: use it. Otherwise skip QQ.
     has_erfinv = hasattr(np, "erfinv")
     if has_erfinv:
-        q = np.sqrt(2) * np.erfinv(2 * p - 1) # type: ignore
+        q = np.sqrt(2) * np.erfinv(2 * p - 1)  # type: ignore
         plt.figure()
         plt.scatter(q, r, s=12)
         plt.xlabel("Normal quantiles")
@@ -289,10 +290,10 @@ def ols_global_linear_trend_model(train, test):
 
     # Autocorrelation (lag 1) + Durbin-Watson for independence
     lag1 = np.corrcoef(resid[1:], resid[:-1])[0, 1]
-    dw = np.sum(np.diff(resid)**2) / np.sum(resid**2)
+    dw = np.sum(np.diff(resid) ** 2) / np.sum(resid ** 2)
     print("3.6 Residual checks (numbers):")
     print(f"Lag-1 residual autocorr ≈ {lag1:.3f} (should be near 0 for i.i.d.)")
-    print(f"Durbin–Watson ≈ {dw:.3f} (≈2 suggests no autocorrelation)")
+    print(f"Durbin-Watson ≈ {dw:.3f} (≈2 suggests no autocorrelation)")
     print("Look for: non-random pattern in residual-vs-fitted, heavy tails / skew in histogram/QQ,")
     print("and autocorrelation (lag1 far from 0, DW far from 2).")
 
