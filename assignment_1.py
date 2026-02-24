@@ -300,7 +300,211 @@ def ols_global_linear_trend_model(train, test):
     return forecast_table, theta_hat, se_theta, sigma2_hat
 
 
+def wls_local_linear_trend_model(train, test, lambda_=0.9):
+    """
+    Problem 4: WLS local linear trend model using exponentially decaying weights.
+
+    Weights are assigned from oldest -> newest as:
+        w_t = lambda^(N-1), ..., lambda^1, lambda^0
+    so the newest training point gets weight 1.
+    """
+    # --- Build y and X for training ---
+    y = train["total"].to_numpy(dtype=float)
+    x = train["x"].to_numpy(dtype=float)
+    N = len(y)
+    X = np.column_stack([np.ones(N), x])  # [1, x]
+
+    # --- 4.1 Variance-covariance matrix Sigma for local model ---
+    # Weights from oldest to newest
+    w = lambda_ ** np.arange(N - 1, -1, -1)   # oldest smallest, newest = 1
+
+    # Sigma = diag(1 / w), and Sigma^{-1} = W = diag(w)
+    Sigma = np.diag(1.0 / w)
+    W = np.diag(w)
+
+    print("\n" + "=" * 70)
+    print("4.1 Local model variance-covariance matrix (WLS)")
+    print(f"lambda = {lambda_}")
+    print(f"N = {N}")
+    print("Sigma = diag(1/w), where w = [lambda^(N-1), ..., 1]")
+    print("Top-left 5x5 of Sigma:")
+    print(np.round(Sigma[:5, :5], 4))
+    print("Bottom-right 5x5 of Sigma:")
+    print(np.round(Sigma[-5:, -5:], 4))
+    print("Global OLS comparison: Sigma_OLS = sigma^2 * I (equal variance / equal weighting).")
+
+    # --- 4.2 Plot lambda-weights vs time ---
+    plt.figure()
+    plt.plot(train["time"], w, marker="o", markersize=3)
+    plt.xlabel("Time")
+    plt.ylabel("Lambda-weights")
+    plt.title(f"Lambda-weights vs time (lambda={lambda_})")
+    plt.tight_layout()
+    plt.show()
+
+    last_time_point = train["time"].iloc[-1]
+    last_weight = w[-1]
+    print("\n4.2 Lambda-weights:")
+    print("Highest weight is at the newest training time point.")
+    print("Newest time point:", last_time_point.strftime("%Y-%m"))
+    print(f"Weight at newest point: {last_weight:.6g}")
+
+    # --- 4.3 Sum of weights ---
+    sum_weights = np.sum(w)
+    print("\n4.3 Sum of lambda-weights:")
+    print(f"sum(w) = {sum_weights:.6g}")
+    print(f"Corresponding OLS sum of weights = N = {N}")
+
+    # --- 4.4 Manual WLS estimate theta = (X'WX)^(-1) X'Wy ---
+    XtWX = X.T @ W @ X
+    XtWX_inv = np.linalg.inv(XtWX)
+    theta_wls = XtWX_inv @ (X.T @ W @ y)
+
+    print("\n4.4 WLS parameter estimates (manual matrix formula):")
+    print("theta_hat_wls = (X^T W X)^(-1) X^T W y")
+    print(f"theta1_hat = {theta_wls[0]:.6g}")
+    print(f"theta2_hat = {theta_wls[1]:.6g}")
+
+    # Fitted values and residuals (train)
+    y_hat_train = X @ theta_wls
+    resid = y - y_hat_train
+
+    # Weighted residual variance estimate (rough)
+    # p = 2 parameters
+    p = 2
+    sigma2_wls_hat = (resid.T @ W @ resid) / (N - p)
+
+    # Approximate covariance for theta under WLS (using sigma^2 * (X'WX)^-1)
+    cov_theta_wls = sigma2_wls_hat * XtWX_inv
+    se_theta_wls = np.sqrt(np.diag(cov_theta_wls))
+
+    print("\nApprox. WLS standard errors:")
+    print(f"SE(theta1_hat) = {se_theta_wls[0]:.6g}")
+    print(f"SE(theta2_hat) = {se_theta_wls[1]:.6g}")
+    print(f"sigma^2_wls_hat (weighted) = {sigma2_wls_hat:.6g}")
+
+    # --- 4.5 Forecast next 12 months (test period) ---
+    x0 = test["x"].to_numpy(dtype=float)
+    X0 = np.column_stack([np.ones(len(x0)), x0])
+    y_pred = X0 @ theta_wls
+
+    # Prediction interval (approx):
+    # Var(y0 - yhat0) ≈ sigma^2 * (1 + x0'(X'WX)^-1 x0)
+    z = 1.96
+    pred_var_obs = sigma2_wls_hat * (1.0 + np.sum((X0 @ XtWX_inv) * X0, axis=1))
+    pred_se_obs = np.sqrt(pred_var_obs)
+
+    lower = y_pred - z * pred_se_obs
+    upper = y_pred + z * pred_se_obs
+
+    forecast_table = pd.DataFrame({
+        "time": test["time"].dt.strftime("%Y-%m"),
+        "x": test["x"],
+        "y_obs": test["total"].to_numpy(dtype=float),
+        "wls_pred": y_pred,
+        "PI_lower_95": lower,
+        "PI_upper_95": upper
+    })
+
+    print("\n4.5 WLS forecast table (test set) with ~95% prediction intervals:")
+    print(forecast_table.round(2).to_string(index=False))
+    print()
+
+    # --- Plot: train + fitted (WLS) + test + forecast + PI ---
+    plt.figure()
+    plt.scatter(train["x"], train["total"], s=12, label="Train obs")
+    plt.plot(train["x"], y_hat_train, label=f"WLS fitted mean (train), λ={lambda_}")
+
+    plt.scatter(test["x"], test["total"], s=12, label="Test obs")
+    plt.plot(test["x"], y_pred, label="WLS forecast mean (test)")
+    plt.fill_between(test["x"], lower, upper, alpha=0.2, label="~95% Prediction interval (WLS)")
+
+    plt.xlabel("x (year + (month-1)/12)")
+    plt.ylabel("Total registered vehicles (millions)")
+    plt.title(f"Local linear trend (WLS, λ={lambda_}): fit + 12-month forecast")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+    # --- Comparison plot: OLS vs WLS on same figure (matches your R idea) ---
+    # Reuse your OLS fit manually here for a clean side-by-side plot
+    X_ols = X
+    XtX = X_ols.T @ X_ols
+    XtX_inv = np.linalg.inv(XtX)
+    theta_ols = XtX_inv @ (X_ols.T @ y)
+    y_hat_ols_train = X_ols @ theta_ols
+    y_pred_ols = X0 @ theta_ols
+
+    resid_ols = y - y_hat_ols_train
+    sigma2_ols_hat = (resid_ols @ resid_ols) / (N - p)
+    pred_var_obs_ols = sigma2_ols_hat * (1.0 + np.sum((X0 @ XtX_inv) * X0, axis=1))
+    pred_se_obs_ols = np.sqrt(pred_var_obs_ols)
+    lower_ols = y_pred_ols - z * pred_se_obs_ols
+    upper_ols = y_pred_ols + z * pred_se_obs_ols
+
+    plt.figure()
+    plt.scatter(train["x"], train["total"], s=12, label="Train obs")
+    plt.scatter(test["x"], test["total"], s=12, label="Test obs")
+
+    plt.plot(test["x"], y_pred_ols, linewidth=2, label="OLS forecast")
+    plt.plot(test["x"], lower_ols, linestyle="--", linewidth=1, label="OLS prediction interval")
+    plt.plot(test["x"], upper_ols, linestyle="--", linewidth=1)
+
+    plt.plot(test["x"], y_pred, linewidth=2, label=f"WLS forecast (λ={lambda_})")
+    plt.plot(test["x"], lower, linestyle=":", linewidth=1, label="WLS prediction interval")
+    plt.plot(test["x"], upper, linestyle=":", linewidth=1)
+
+    plt.xlabel("x (year + (month-1)/12)")
+    plt.ylabel("Total registered vehicles (millions)")
+    plt.title("OLS vs WLS: 12-month forecast with prediction intervals")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+    # --- Full history style plot (train + test + forecasts) ---
+    plt.figure()
+    plt.scatter(train["x"], train["total"], s=12, label="Train obs")
+    plt.scatter(test["x"], test["total"], s=12, label="Test obs")
+
+    plt.plot(test["x"], y_pred_ols, linewidth=2, label="OLS forecast")
+    plt.plot(test["x"], lower_ols, linestyle="--", linewidth=1)
+    plt.plot(test["x"], upper_ols, linestyle="--", linewidth=1)
+
+    plt.plot(test["x"], y_pred, linewidth=2, label=f"WLS forecast (λ={lambda_})")
+    plt.plot(test["x"], lower, linestyle=":", linewidth=1)
+    plt.plot(test["x"], upper, linestyle=":", linewidth=1)
+
+    plt.xlabel("x (year + (month-1)/12)")
+    plt.ylabel("Total registered vehicles (millions)")
+    plt.title("OLS vs WLS: Full history with 12-month forecasts")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+    # Quick test metrics for WLS
+    y_test = test["total"].to_numpy(dtype=float)
+    inside = (y_test >= lower) & (y_test <= upper)
+    coverage = inside.mean()
+    mae = np.mean(np.abs(y_test - y_pred))
+
+    print("WLS forecast comment (quick metrics):")
+    print(f"MAE on test = {mae:,.6f}")
+    print(f"Fraction of test points inside ~95% PI = {coverage:.2f}")
+
+    return {
+        "lambda": lambda_,
+        "weights": w,
+        "Sigma": Sigma,
+        "theta_hat_wls": theta_wls,
+        "se_theta_wls": se_theta_wls,
+        "sigma2_wls_hat": sigma2_wls_hat,
+        "forecast_table_wls": forecast_table
+    }
+
 if __name__ == "__main__":
     train, test = plot_data()
     X_all, y_all, theta_hat, sigma2_hat = linear_trend_model(train)
     forecast_table, theta_hat, se_theta, sigma2_hat = ols_global_linear_trend_model(train, test)
+
+    # Problem 4: WLS local linear trend model
+    wls_results = wls_local_linear_trend_model(train, test, lambda_=0.9)
