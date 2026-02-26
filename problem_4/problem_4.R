@@ -95,13 +95,13 @@ forecast_table <- data.frame(
 
 ########################
 
-# 1) Vælg x-interval: sidste del af train + hele test + lidt "luft" frem
-x_left  <- as.POSIXct("2023-01-01", tz="UTC")  # justér hvis du vil se mere/mindre
-x_right <- max(Dtest$time) + 35*24*3600        # ~35 dage ekstra til højre
+# 1) Choose x-interval: from start of training to end of test + some space on the right
+x_left  <- as.POSIXct("2023-01-01", tz="UTC") 
+x_right <- max(Dtest$time) + 35*24*3600       
 
 train_win <- Dtrain[Dtrain$time >= x_left & Dtrain$time <= x_right, ]
 
-# 2) Vælg y-interval ud fra det der faktisk er i vinduet (inkl. PI)
+# 2) Choose y-interval based on all observations and prediction intervals
 y_all <- c(
   train_win$total,
   Dtest$total,
@@ -110,17 +110,17 @@ y_all <- c(
 )
 ylim <- range(y_all, na.rm = TRUE)
 
-# (valgfrit) lidt luft op/ned
+# small padding
 pad <- 0.02 * diff(ylim)
 ylim <- c(ylim[1] - pad, ylim[2] + pad)
 
-# 3) Plot: først træning
+# 3) Plot: training data (only the part that overlaps with the test period + some space on the right)
 plot(train_win$time, train_win$total, pch = 16, col = "black",
      xlab = "Time", ylab = "Total (millions)",
      main = "OLS vs WLS: 12-month forecast with prediction intervals",
      xlim = c(x_left, x_right), ylim = ylim)
 
-# 4) Plot test-observationer
+# 4) Plot test-observations
 points(Dtest$time, Dtest$total, pch = 16, col ="red3")
 
 # 5) OLS: fit + prediction interval
@@ -164,7 +164,7 @@ y_all_full <- c(
 )
 ylim_full <- range(y_all_full, na.rm = TRUE)
 
-# (optional) add a small padding
+# add a small padding
 pad_full <- 0.02 * diff(ylim_full)
 ylim_full <- c(ylim_full[1] - pad_full, ylim_full[2] + pad_full)
 
@@ -216,7 +216,7 @@ y_all_full <- c(
 )
 ylim_full <- range(y_all_full, na.rm = TRUE)
 
-# (optional) add a small padding
+# add a small padding
 pad_full <- 0.02 * diff(ylim_full)
 ylim_full <- c(ylim_full[1] - pad_full, ylim_full[2] + pad_full)
 
