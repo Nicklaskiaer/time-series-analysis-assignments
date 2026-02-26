@@ -1,6 +1,10 @@
+import os
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+
+FIGURES_DIR = "figures"
 
 
 def plot_data():
@@ -28,7 +32,7 @@ def plot_data():
     plt.ylabel("Total registered motor-driven vehicles (millions)")
     plt.title("Denmark vehicles (training set: 2018-01 to 2023-12)")
     plt.tight_layout()
-    plt.savefig("figures/1_total_reg_vehicles.png")  # add .png so it actually saves as an image
+    plt.savefig(os.path.join(FIGURES_DIR, "1_total_reg_vehicles.png"))
 
     # --- 6) Quick numeric summary (training only) ---
     start_time = train["time"].iloc[0]
@@ -128,7 +132,7 @@ def linear_trend_model(train):
     full_text = s1 + "\n" + s2 + "\n" + s3
     plt.text(0.01, 0.99, full_text, va="top", family="monospace")
     plt.tight_layout()
-    plt.savefig("figures/2_linear_trend_model_first3.png", dpi=200)
+    plt.savefig(os.path.join(FIGURES_DIR, "2_linear_trend_model_first3.png"), dpi=200)
     plt.show()
 
     # (Optional, but useful later) Fit θ by OLS on ALL training data:
@@ -187,6 +191,7 @@ def ols_global_linear_trend_model(train, test):
     plt.ylabel("Total registered vehicles")
     plt.title("Training data + fitted global linear trend (mean)")
     plt.tight_layout()
+    plt.savefig(os.path.join(FIGURES_DIR, "3_ols_fitted_mean.png"))
     plt.show()
 
     # --- 3.3 Forecast test set with prediction intervals ---
@@ -233,6 +238,7 @@ def ols_global_linear_trend_model(train, test):
     plt.title("Global linear trend: fit + 12-month forecast")
     plt.legend()
     plt.tight_layout()
+    plt.savefig(os.path.join(FIGURES_DIR, "3_ols_fit_forecast_pi.png"))
     plt.show()
 
     # --- 3.5 Comment on forecast (basic, automated hints) ---
@@ -256,6 +262,7 @@ def ols_global_linear_trend_model(train, test):
     plt.ylabel("Residuals")
     plt.title("Residuals vs fitted")
     plt.tight_layout()
+    plt.savefig(os.path.join(FIGURES_DIR, "3_residuals_vs_fitted.png"))
     plt.show()
 
     # Histogram of residuals
@@ -265,6 +272,7 @@ def ols_global_linear_trend_model(train, test):
     plt.ylabel("Count")
     plt.title("Residual histogram")
     plt.tight_layout()
+    plt.savefig(os.path.join(FIGURES_DIR, "3_residual_histogram.png"))
     plt.show()
 
     # QQ plot (simple, no extra libraries): compare sorted residuals to normal quantiles
@@ -284,6 +292,7 @@ def ols_global_linear_trend_model(train, test):
         plt.ylabel("Sorted residuals")
         plt.title("QQ plot (residuals vs Normal)")
         plt.tight_layout()
+        plt.savefig(os.path.join(FIGURES_DIR, "3_residual_qq.png"))
         plt.show()
     else:
         print("QQ plot skipped (np.erfinv not available in this numpy build).")
@@ -340,6 +349,7 @@ def wls_local_linear_trend_model(train, test, lambda_=0.9):
     plt.ylabel("Lambda-weights")
     plt.title(f"Lambda-weights vs time (lambda={lambda_})")
     plt.tight_layout()
+    plt.savefig(os.path.join(FIGURES_DIR, "4_lambda_weights.png"))
     plt.show()
 
     last_time_point = train["time"].iloc[-1]
@@ -424,6 +434,7 @@ def wls_local_linear_trend_model(train, test, lambda_=0.9):
     plt.title(f"Local linear trend (WLS, λ={lambda_}): fit + 12-month forecast")
     plt.legend()
     plt.tight_layout()
+    plt.savefig(os.path.join(FIGURES_DIR, "4_wls_fit_forecast.png"))
     plt.show()
 
     # --- Comparison plot: OLS vs WLS on same figure (matches your R idea) ---
@@ -459,6 +470,7 @@ def wls_local_linear_trend_model(train, test, lambda_=0.9):
     plt.title("OLS vs WLS: 12-month forecast with prediction intervals")
     plt.legend()
     plt.tight_layout()
+    plt.savefig(os.path.join(FIGURES_DIR, "4_ols_vs_wls_forecast.png"))
     plt.show()
 
     # --- Full history style plot (train + test + forecasts) ---
@@ -479,6 +491,7 @@ def wls_local_linear_trend_model(train, test, lambda_=0.9):
     plt.title("OLS vs WLS: Full history with 12-month forecasts")
     plt.legend()
     plt.tight_layout()
+    plt.savefig(os.path.join(FIGURES_DIR, "4_ols_vs_wls_full_history.png"))
     plt.show()
 
     # Quick test metrics for WLS
@@ -501,10 +514,107 @@ def wls_local_linear_trend_model(train, test, lambda_=0.9):
         "forecast_table_wls": forecast_table
     }
 
-if __name__ == "__main__":
-    train, test = plot_data()
-    X_all, y_all, theta_hat, sigma2_hat = linear_trend_model(train)
-    forecast_table, theta_hat, se_theta, sigma2_hat = ols_global_linear_trend_model(train, test)
 
-    # Problem 4: WLS local linear trend model
+def rls_model(train, test):
+    """
+    Problem 5: Recursive Least Squares (RLS).
+
+    5.1: First two RLS iterations (compute R1, R2 and theta1, theta2).
+    5.2: For-loop implementation of RLS for t = 1..3.
+    """
+    # Ensure training data is in chronological order (same as R: order(Dtrain$time))
+    train = train.sort_values("time").reset_index(drop=True)
+
+    y = train["total"].to_numpy(dtype=float)
+    x_reg = train["x"].to_numpy(dtype=float)  # regressor (year + (month-1)/12)
+
+    # Regressor vectors x_t = [1; x_t] as column vectors (2,1)
+    def x_t_vec(i):
+        return np.array([[1.0], [x_reg[i]]])
+
+    # --- 5.1: First two RLS iterations ---
+    y1, y2 = y[0], y[1]
+    x1 = x_t_vec(0)
+    x2 = x_t_vec(1)
+
+    # Initial values given in the assignment
+    R0 = np.diag([0.1, 0.1])
+    theta0 = np.array([[0.0], [0.0]])
+
+    # Iteration t = 1
+    R1 = R0 + x1 @ x1.T
+    err1 = y1 - (x1.T @ theta0).item()
+    theta1 = theta0 + np.linalg.solve(R1, x1) * err1
+
+    # Iteration t = 2
+    R2 = R1 + x2 @ x2.T
+    err2 = y2 - (x2.T @ theta1).item()
+    theta2 = theta1 + np.linalg.solve(R2, x2) * err2
+
+    print("\n" + "=" * 70)
+    print("5.1 First two RLS iterations (R1, R2, theta1, theta2)")
+    print("=" * 70)
+    print("R1 =\n", R1)
+    print("\nR2 =\n", R2)
+    print("\n(Optional) theta1 =\n", theta1)
+    print("\n(Optional) theta2 =\n", theta2)
+
+    # --- 5.2: For-loop implementation of RLS for t = 1..3 ---
+    R = np.diag([0.1, 0.1]).copy()
+    theta_hat = np.array([[0.0], [0.0]])
+
+    res_rows = []
+    for t in range(3):  # t = 0,1,2 -> first 3 observations
+        x_t = x_t_vec(t)
+        y_t = y[t]
+
+        # Update information matrix R_t = R_{t-1} + x_t x_t'
+        R = R + x_t @ x_t.T
+
+        # Prediction error (innovation): y_t - x_t' theta_{t-1}
+        err = float(y_t - (x_t.T @ theta_hat).item())
+
+        # Update parameter estimate: theta_hat_t = theta_hat_{t-1} + R_t^{-1} x_t * err
+        theta_hat = theta_hat + np.linalg.solve(R, x_t) * err
+
+        res_rows.append({
+            "t": t + 1,
+            "time": train["time"].iloc[t],
+            "theta1": theta_hat[0, 0],
+            "theta2": theta_hat[1, 0],
+        })
+
+    res = pd.DataFrame(res_rows)
+
+    print("\n" + "=" * 70)
+    print("5.2 RLS for t = 1..3 (theta_hat at each step)")
+    print("=" * 70)
+    print(res.to_string(index=False))
+
+    print("\nFinal theta_hat at t = 3:")
+    print(theta_hat)
+
+    return {
+        "R1": R1,
+        "R2": R2,
+        "theta1": theta1,
+        "theta2": theta2,
+        "rls_steps": res,
+        "theta_hat_t3": theta_hat,
+    }
+
+
+if __name__ == "__main__":
+    os.makedirs(FIGURES_DIR, exist_ok=True)
+    # Problem 1: Plot data
+    print("Problem 1: Plot data")
+    train, test = plot_data()
+    print("Problem 2: Linear trend model")
+    X_all, y_all, theta_hat, sigma2_hat = linear_trend_model(train)
+    print("Problem 3: OLS global linear trend model")
+    forecast_table, theta_hat, se_theta, sigma2_hat = ols_global_linear_trend_model(train, test)
+    print("Problem 4: WLS local linear trend model")
     wls_results = wls_local_linear_trend_model(train, test, lambda_=0.9)
+    print("Problem 5: RLS")
+    rls_results = rls_model(train, test)
+    
