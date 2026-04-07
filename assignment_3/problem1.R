@@ -7,12 +7,16 @@ n <- 200
 # Number of realizations
 n_sim <- 5
 
+phi1 <- -0.6
+phi2 <- 0.5
+
+
 # Simulate 5 realizations of the AR(2) process
 # Model in assignment: X_t + phi1*X_{t-1} + phi2*X_{t-2} = e_t
 # In arima.sim(), AR signs are flipped, so we use ar = c(-phi1, -phi2)
 sim_data <- replicate(
   n_sim,
-  arima.sim(n = n, model = list(ar = c(0.6, -0.5)))
+  arima.sim(n = n, model = list(ar = c(-phi1, -phi2)))
 )
 
 # Plot all 5 realizations in one figure
@@ -43,7 +47,7 @@ lag_max <- 30
 
 # --- Theoretical ACF ---
 # Compute theoretical ACF using ARMAacf
-acf_theoretical <- ARMAacf(ar = c(0.6, -0.5), lag.max = lag_max)
+acf_theoretical <- ARMAacf(ar = c(-phi1, -phi2), lag.max = lag_max)
 
 # --- Empirical ACF ---
 # Compute ACF for each of the 5 simulations
@@ -79,3 +83,267 @@ legend(
   lwd = c(1,3),
   bty = "n"
 )
+
+
+
+##############################################################################################################
+
+# problem 1.3
+set.seed(123)
+
+# Number of observations
+n <- 200
+
+# Number of realizations
+n_sim <- 5
+
+phi1 <- -0.6
+phi2 <- -0.3
+
+sim_data <- replicate(
+  n_sim,
+  arima.sim(n = n, model = list(ar = c(-phi1, -phi2)))
+)
+
+# Number of lags
+lag_max <- 30
+
+
+
+# --- Theoretical ACF ---
+# Compute theoretical ACF using ARMAacf
+acf_theoretical <- ARMAacf(ar = c(-phi1, -phi2), lag.max = lag_max)
+
+# --- Empirical ACF ---
+# Compute ACF for each of the 5 simulations
+acf_empirical <- apply(sim_data, 2, function(x) {
+  acf(x, plot = FALSE, lag.max = lag_max)$acf
+})
+
+# --- Plot ---
+# Plot first empirical ACF
+plot(
+  0:lag_max,
+  acf_empirical[,1],
+  type = "l",
+  ylim = range(acf_empirical, acf_theoretical),
+  xlab = "Lag",
+  ylab = "ACF",
+  main = "Empirical vs Theoretical ACF"
+)
+
+# Add remaining empirical ACFs
+for(i in 2:ncol(acf_empirical)){
+  lines(0:lag_max, acf_empirical[,i], col = i)
+}
+
+# Add theoretical ACF (thick black line)
+lines(0:lag_max, acf_theoretical, lwd = 3, col = "black")
+
+# Legend
+legend(
+  "topright",
+  legend = c("Empirical (5 sims)", "Theoretical"),
+  col = c("gray", "black"),
+  lwd = c(1,3),
+  bty = "n"
+)
+
+
+##############################################################################################################
+
+# problem 1.3
+set.seed(123)
+
+# Number of observations
+n <- 200
+
+# Number of realizations
+n_sim <- 5
+
+phi1 <- -0.6
+phi2 <- -0.3
+
+sim_data <- replicate(
+  n_sim,
+  arima.sim(n = n, model = list(ar = c(-phi1, -phi2)))
+)
+
+# Number of lags
+lag_max <- 30
+
+
+
+# --- Theoretical ACF ---
+# Compute theoretical ACF using ARMAacf
+acf_theoretical <- ARMAacf(ar = c(-phi1, -phi2), lag.max = lag_max)
+
+# --- Empirical ACF ---
+# Compute ACF for each of the 5 simulations
+acf_empirical <- apply(sim_data, 2, function(x) {
+  acf(x, plot = FALSE, lag.max = lag_max)$acf
+})
+
+# --- Plot ---
+# Plot first empirical ACF
+plot(
+  0:lag_max,
+  acf_empirical[,1],
+  type = "l",
+  ylim = range(acf_empirical, acf_theoretical),
+  xlab = "Lag",
+  ylab = "ACF",
+  main = "Empirical vs Theoretical ACF"
+)
+
+# Add remaining empirical ACFs
+for(i in 2:ncol(acf_empirical)){
+  lines(0:lag_max, acf_empirical[,i], col = i)
+}
+
+# Add theoretical ACF (thick black line)
+lines(0:lag_max, acf_theoretical, lwd = 3, col = "black")
+
+# Legend
+legend(
+  "topright",
+  legend = c("Empirical (5 sims)", "Theoretical"),
+  col = c("gray", "black"),
+  lwd = c(1,3),
+  bty = "n"
+)
+
+
+##############################################################################################################
+
+# problem 1.4
+set.seed(123)
+
+# Number of observations
+n <- 200
+
+# Number of realizations
+n_sim <- 5
+
+phi1 <- 0.6
+phi2 <- -0.3
+
+sim_data <- replicate(
+  n_sim,
+  arima.sim(n = n, model = list(ar = c(-phi1, -phi2)))
+)
+
+# Number of lags
+lag_max <- 30
+
+
+
+# --- Theoretical ACF ---
+# Compute theoretical ACF using ARMAacf
+acf_theoretical <- ARMAacf(ar = c(-phi1, -phi2), lag.max = lag_max)
+
+# --- Empirical ACF ---
+# Compute ACF for each of the 5 simulations
+acf_empirical <- apply(sim_data, 2, function(x) {
+  acf(x, plot = FALSE, lag.max = lag_max)$acf
+})
+
+# --- Plot ---
+# Plot first empirical ACF
+plot(
+  0:lag_max,
+  acf_empirical[,1],
+  type = "l",
+  ylim = range(acf_empirical, acf_theoretical),
+  xlab = "Lag",
+  ylab = "ACF",
+  main = "Empirical vs Theoretical ACF"
+)
+
+# Add remaining empirical ACFs
+for(i in 2:ncol(acf_empirical)){
+  lines(0:lag_max, acf_empirical[,i], col = i)
+}
+
+# Add theoretical ACF (thick black line)
+lines(0:lag_max, acf_theoretical, lwd = 3, col = "black")
+
+# Legend
+legend(
+  "topright",
+  legend = c("Empirical (5 sims)", "Theoretical"),
+  col = c("gray", "black"),
+  lwd = c(1,3),
+  bty = "n"
+)
+
+
+##############################################################################################################
+
+# problem 1.5 den ene rod kommer til ligge på enhedscirklen, så vi har en ikke-stationær proces. Vi kan stadig simul
+
+##############################################################################################################
+
+
+# problem 1.6
+set.seed(123)
+
+# Number of observations
+n <- 200
+
+# Number of realizations
+n_sim <- 5
+
+phi1 <- -0.75
+phi2 <- -0.3
+
+sim_data <- replicate(
+  n_sim,
+  arima.sim(n = n, model = list(ar = c(-phi1, -phi2)))
+)
+
+# Number of lags
+lag_max <- 30
+
+
+
+# --- Theoretical ACF ---
+# Compute theoretical ACF using ARMAacf
+acf_theoretical <- ARMAacf(ar = c(-phi1, -phi2), lag.max = lag_max)
+
+# --- Empirical ACF ---
+# Compute ACF for each of the 5 simulations
+acf_empirical <- apply(sim_data, 2, function(x) {
+  acf(x, plot = FALSE, lag.max = lag_max)$acf
+})
+
+# --- Plot ---
+# Plot first empirical ACF
+plot(
+  0:lag_max,
+  acf_empirical[,1],
+  type = "l",
+  ylim = range(acf_empirical, acf_theoretical),
+  xlab = "Lag",
+  ylab = "ACF",
+  main = "Empirical vs Theoretical ACF"
+)
+
+# Add remaining empirical ACFs
+for(i in 2:ncol(acf_empirical)){
+  lines(0:lag_max, acf_empirical[,i], col = i)
+}
+
+# Add theoretical ACF (thick black line)
+lines(0:lag_max, acf_theoretical, lwd = 3, col = "black")
+
+# Legend
+legend(
+  "topright",
+  legend = c("Empirical (5 sims)", "Theoretical"),
+  col = c("gray", "black"),
+  lwd = c(1,3),
+  bty = "n"
+)
+
+
