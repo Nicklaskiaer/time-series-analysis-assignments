@@ -19,6 +19,8 @@ sim_data <- replicate(
   arima.sim(n = n, model = list(ar = c(-phi1, -phi2)))
 )
 
+png("assignment_3/timeseries.png", width = 1200, height = 600)
+
 # Plot all 5 realizations in one figure
 matplot(
   sim_data,
@@ -37,6 +39,8 @@ legend(
   col = 1:5,
   bty = "n"
 )
+
+dev.off()
 
 
 ##############################################################################################################
@@ -219,8 +223,8 @@ legend(
 # problem 1.5 den ene rod kommer til ligge på enhedscirklen, så vi har en ikke-stationær proces. Vi kan stadig simul
 
 ##############################################################################################################
-
 # problem 1.6 (theoretical only)
+
 set.seed(123)
 
 phi1 <- -0.75
@@ -241,4 +245,59 @@ plot(
   xlab = "Lag",
   ylab = "ACF",
   main = "Theoretical ACF"
+)
+
+
+################
+# Set seed for reproducibility
+set.seed(123)
+
+# Number of observations
+n <- 200
+
+# Number of realizations
+n_sim <- 5
+
+phi1 <- -0.75
+phi2 <- -0.3
+
+# Storage matrix
+sim_data <- matrix(0, nrow = n, ncol = n_sim)
+
+# Simulate 5 realizations recursively
+for (j in 1:n_sim) {
+  
+  # White noise
+  eps <- rnorm(n, mean = 0, sd = 1)
+  
+  # Initial values
+  x <- numeric(n)
+  x[1] <- eps[1]
+  x[2] <- 0.75 * x[1] + eps[2]
+  
+  # Recursive simulation
+  for (t in 3:n) {
+    x[t] <- 0.75 * x[t-1] + 0.3 * x[t-2] + eps[t]
+  }
+  
+  sim_data[, j] <- x
+}
+
+# Plot all 5 realizations in one figure
+matplot(
+  sim_data,
+  type = "l",
+  lty = 1,
+  xlab = "Time",
+  ylab = expression(X[t]),
+  main = "5 realizations of the AR(2) process"
+)
+
+# Add legend
+legend(
+  "topleft",
+  legend = paste("Realization", 1:5),
+  lty = 1,
+  col = 1:5,
+  bty = "n"
 )
