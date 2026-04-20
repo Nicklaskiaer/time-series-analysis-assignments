@@ -33,23 +33,36 @@ def problem_3_1(df):
     print("3.1  Raw time series plot")
     print("=" * 60)
 
-    fig, axes = plt.subplots(3, 1, figsize=(12, 8), sharex=True)
+    import matplotlib.dates as mdates
+
+    fig, axes = plt.subplots(3, 1, figsize=(16, 9), sharex=True)
     x = df["tdate"]
 
-    axes[0].plot(x, df["Ph"], color="tab:red")
-    axes[0].set_ylabel("Ph (W)")
-    axes[0].set_title("Electrical heating power")
+    for ax, y, color, ylabel, title in zip(
+        axes,
+        [df["Ph"], df["Tdelta"], df["Gv"]],
+        ["tab:red", "tab:blue", "tab:orange"],
+        ["Ph (W)", "Tdelta (°C)", "Gv (W/m²)"],
+        ["Electrical heating power", "Internal – external temperature difference",
+         "Vertical solar radiation"],
+    ):
+        ax.plot(x, y, color=color, linewidth=0.9, marker="o", markersize=2.5,
+                markerfacecolor=color, markeredgewidth=0)
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
+        # Major gridlines at every day boundary
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %d"))
+        # Minor ticks every 6 hours so individual hours are visible
+        ax.xaxis.set_minor_locator(mdates.HourLocator(byhour=[0, 6, 12, 18]))
+        ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:00"))
+        ax.grid(which="major", axis="x", linestyle="-",  linewidth=0.8, color="grey", alpha=0.5)
+        ax.grid(which="minor", axis="x", linestyle=":",  linewidth=0.5, color="grey", alpha=0.3)
+        ax.grid(which="major", axis="y", linestyle="--", linewidth=0.5, color="grey", alpha=0.3)
+        ax.tick_params(axis="x", which="major", rotation=0,  labelsize=8, pad=12)
+        ax.tick_params(axis="x", which="minor", rotation=45, labelsize=6)
 
-    axes[1].plot(x, df["Tdelta"], color="tab:blue")
-    axes[1].set_ylabel("Tdelta (°C)")
-    axes[1].set_title("Internal – external temperature difference")
-
-    axes[2].plot(x, df["Gv"], color="tab:orange")
-    axes[2].set_ylabel("Gv (W/m²)")
-    axes[2].set_title("Vertical solar radiation")
-    axes[2].tick_params(axis="x", rotation=30)
-
-    fig.suptitle("3.1  Three non-lagged time series", fontsize=13)
+    fig.suptitle("3.1  Three non-lagged time series (hourly resolution)", fontsize=13)
     plt.tight_layout()
     savefig("3_1_timeseries")
 
